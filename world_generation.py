@@ -1,6 +1,7 @@
 import random
 import sqlite3
 import noise
+import json
 from logger import setup_logger
 
 logger = setup_logger('world_generation')
@@ -96,55 +97,66 @@ class WorldGenerator:
         return sub_region_grid
 
     def save_world_to_db(self):
-        """Saves regions and sub-regions to the database."""
         logger.info("Saving world to database")
         conn = sqlite3.connect('game_world.db')
         cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS regions (region_x INT, region_y INT, biome TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS sub_regions (region_x INT, region_y INT, sub_x INT, sub_y INT, sub_biome TEXT)''')
-        cursor.execute('''DELETE FROM regions''')
-        cursor.execute('''DELETE FROM sub_regions''')
         
-        # Save regions and sub-regions
-        for region_y in range(len(self.regions)):
-            for region_x in range(len(self.regions[region_y])):
-                region = self.regions[region_y][region_x]
-                biome = region['biome']
-                cursor.execute('INSERT INTO regions (region_x, region_y, biome) VALUES (?, ?, ?)', (region_x, region_y, biome))
-                
-                # Save sub-regions (microbiomes)
-                for sub_y in range(self.region_size):
-                    for sub_x in range(self.region_size):
-                        sub_biome = region['sub_regions'][sub_y][sub_x]
-                        cursor.execute('INSERT INTO sub_regions (region_x, region_y, sub_x, sub_y, sub_biome) VALUES (?, ?, ?, ?, ?)', 
-                                       (region_x, region_y, sub_x, sub_y, sub_biome))
-
+        # Drop the existing table if it exists
+        cursor.execute('DROP TABLE IF EXISTS regions')
+        
+        # Create table with the new schema
+        cursor.execute('''
+        CREATE TABLE regions
+        (region_x INTEGER, region_y INTEGER, biome TEXT, sub_regions TEXT)
+        ''')
+        
+        # Insert new data
+        for y, row in enumerate(self.regions):
+            for x, region in enumerate(row):
+                cursor.execute('''
+                INSERT INTO regions (region_x, region_y, biome, sub_regions)
+                VALUES (?, ?, ?, ?)
+                ''', (x, y, region['biome'], json.dumps(region['sub_regions'])))
+        
         conn.commit()
         conn.close()
-        logger.info("World saved to database")
+        logger.info(f"World saved to database: {len(self.regions) * len(self.regions[0])} regions")
 
     def load_world_from_db(self):
-        """Loads regions and sub-regions from the database."""
         logger.info("Loading world from database")
         conn = sqlite3.connect('game_world.db')
         cursor = conn.cursor()
         
-        # Load regions
-        cursor.execute('SELECT * FROM regions')
-        data = cursor.fetchall()
-        for row in data:
-            region_x, region_y, biome = row
-            self.regions[region_y][region_x] = {'biome': biome, 'sub_regions': [[None for _ in range(self.region_size)] for _ in range(self.region_size)]}
+        # Check if the table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='regions'")
+        if not cursor.fetchone():
+            logger.warning("Regions table does not exist in the database")
+            conn.close()
+            return []
+
+        cursor.execute("SELECT * FROM regions")
+        rows = cursor.fetchall()
+        logger.info(f"Number of rows retrieved: {len(rows)}")
         
-        # Load sub-regions
-        cursor.execute('SELECT * FROM sub_regions')
-        data = cursor.fetchall()
-        for row in data:
-            region_x, region_y, sub_x, sub_y, sub_biome = row
-            self.regions[region_y][region_x]['sub_regions'][sub_y][sub_x] = sub_biome
+        if not rows:
+            logger.warning("No regions found in the database")
+            conn.close()
+            return []
+
+        max_x = max(row[0] for row in rows)
+        max_y = max(row[1] for row in rows)
+        loaded_regions = [[None for _ in range(max_x + 1)] for _ in range(max_y + 1)]
+
+        for row in rows:
+            x, y, biome, sub_regions = row
+            loaded_regions[y][x] = {
+                'biome': biome,
+                'sub_regions': json.loads(sub_regions)
+            }
 
         conn.close()
-        logger.info("World loaded from database")
+        logger.info(f"World loaded from database: {len(loaded_regions) * len(loaded_regions[0])} regions")
+        return loaded_regions
 
 # Example usage:
 #world_gen = WorldGenerator(world_width=20, world_height=20, region_size=5, seed=42)
