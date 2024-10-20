@@ -1,0 +1,5 @@
+pytest
+discord.py
+pytest-asyncio
+noise
+python-dotenv
