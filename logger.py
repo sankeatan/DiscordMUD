@@ -12,8 +12,11 @@ def setup_logger(name):
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    file_handler = logging.FileHandler(f'{name}.log')
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    # Create a common log file
+    if not hasattr(setup_logger, 'file_handler'):
+        setup_logger.file_handler = logging.FileHandler('discord_mud.log')
+        setup_logger.file_handler.setFormatter(formatter)
+
+    logger.addHandler(setup_logger.file_handler)
 
     return logger

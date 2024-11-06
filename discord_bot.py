@@ -3,6 +3,7 @@ from discord.ext import commands
 import os
 from ai_game_master import AIGameMaster
 from world_generation import WorldGenerator
+from ai_npc import AINPC
 from logger import setup_logger
 from dotenv import load_dotenv
 load_dotenv()
@@ -30,6 +31,14 @@ ai_gm = AIGameMaster()
 # Store player positions and stats
 player_data = {}
 
+# At the top of the file, after initializing player_data
+DEFAULT_PLAYER_STATS = {
+    "x": 0,
+    "y": 0,
+    "level": 1,
+    "inventory": []
+}
+
 # Command to Start or Reset the Game
 @bot.command(name="start")
 async def start_game(ctx):
@@ -45,10 +54,14 @@ async def start_game(ctx):
 async def explore(ctx):
     """Explore the current region and receive quests."""
     player = ctx.author.name
-    biome = world_gen.get_random_biome()
-    quest = ai_gm.generate_quest(player, biome)
-    await ctx.send(f"You find yourself in a {biome}. {quest}")
-    logger.info(f"{player} explored the {biome}")
+    try:
+        biome = world_gen.get_random_biome()
+        quest = ai_gm.generate_quest(player, biome)
+        await ctx.send(f"You find yourself in a {biome}. {quest}")
+        logger.info(f"{player} explored the {biome}")
+    except Exception as e:
+        await ctx.send("An error occurred while exploring. Please try again.")
+        logger.error(f"Explore command failed: {str(e)}")
 
 # Command to Move Player in a Direction
 @bot.command(name="move")
@@ -61,11 +74,32 @@ async def move(ctx, direction: str):
         return
 
     player = ctx.author.name
-    # Placeholder logic for moving and triggering events
-    biome = world_gen.get_random_biome()
-    quest = ai_gm.react_to_player_action("move", player, biome)
-    await ctx.send(f"You move {direction} and find yourself in a {biome}. {quest}")
-    logger.info(f"{player} moved {direction}")
+    
+    # Get or initialize player position and stats
+    if player not in player_data:
+        player_data[player] = DEFAULT_PLAYER_STATS.copy()
+    
+    # Update player position based on direction
+    if direction == "north":
+        player_data[player]["y"] -= 1
+    elif direction == "south":
+        player_data[player]["y"] += 1
+    elif direction == "east":
+        player_data[player]["x"] += 1
+    elif direction == "west":
+        player_data[player]["x"] -= 1
+
+    # Get the new region based on updated position
+    new_x, new_y = player_data[player]["x"], player_data[player]["y"]
+    try:
+        new_region = world_gen.get_region(new_x, new_y)
+        biome = new_region['biome']
+        quest = ai_gm.react_to_player_action("move", player, biome)
+        await ctx.send(f"You move {direction} and find yourself in a {biome}. {quest}")
+        logger.info(f"{player} moved {direction} to ({new_x}, {new_y})")
+    except Exception as e:
+        await ctx.send("An error occurred while moving. Please try again.")
+        logger.error(f"Move command failed: {str(e)}")
 
 # Command to Check Player Stats
 @bot.command(name="stats")
@@ -75,6 +109,19 @@ async def player_stats(ctx):
     stats = player_data.get(player, {"level": 1, "inventory": []})
     await ctx.send(f"Stats for {player}: Level {stats['level']}, Inventory: {stats['inventory']}")
     logger.info(f"Displayed stats for {player}")
+
+@bot.command(name="talk")
+async def talk_to_npc(ctx, npc_name: str, *, player_message: str):
+    """Allow players to talk to NPCs with AI-generated dialogue."""
+    # Instantiate the NPC (you could load this from a database in a real game)
+    npc = AINPC(name=npc_name, personality="friendly")
+
+    # Generate NPC response using AI
+    response = npc.generate_dialogue(player_message)
+
+    # Send the response to the Discord channel
+    await ctx.send(f"{npc_name}: {response}")
+    logger.info(f"{ctx.author.name} talked to {npc_name} - {player_message}")
 
 # Custom Error Handler for Commands
 @bot.event
@@ -97,6 +144,7 @@ async def help_command(ctx):
     !explore - Explore the current region and receive quests.
     !move <direction> - Move in a direction (north, south, east, west).
     !stats - Check your current stats and inventory.
+    !talk <npc_name> <message> - Initiate a conversation with an NPC.
     """
     await ctx.send(help_text)
     logger.info(f"{ctx.author.name} requested help")

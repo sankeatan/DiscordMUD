@@ -34,3 +34,13 @@ def test_world_generation():
             loaded = loaded_world[y][x]
             assert original['biome'] == loaded['biome'], f"Biome mismatch at ({x}, {y}): original {original['biome']}, loaded {loaded['biome']}"
             assert original['sub_regions'] == loaded['sub_regions'], f"Sub-regions mismatch at ({x}, {y})"
+
+# test_ai_and_world.py
+def test_get_random_biome():
+    """Test that get_random_biome() returns a valid biome."""
+    world_gen = WorldGenerator(world_width=20, world_height=20, region_size=5, seed=42)
+    world_gen.generate_regions()
+    biome = world_gen.get_random_biome()
+    
+    assert biome in ['forest', 'desert', 'mountain', 'plains', 'swamp']
+
