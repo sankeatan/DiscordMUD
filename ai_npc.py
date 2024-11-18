@@ -35,6 +35,40 @@ class AINPC:
         except Exception as e:
             logger.error(f"Error generating dialogue: {str(e)}")
             return "I'm sorry, I'm having trouble understanding right now."
+    
+    def generate_combat_narrative(self, actions, outcomes):
+        """
+        Create a cohesive narrative based on actions and their outcomes.
+        """
+        story = []
+        story.append("The battle begins with the following actions:")
+        for action in actions:
+            story.append(f"{action['player']} chose to {action['action']}.")
+
+        story.append("\nResults of the round:")
+        for outcome in outcomes:
+            story.append(outcome)
+
+        # Add environmental or enemy-based flavor
+        story.append("The enemies seem to regroup for another assault.")
+        return "\n".join(story)
+    
+    def evaluate_creative_action(self, action_prompt):
+        """
+        Use AI to evaluate the outcome of a creative action.
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "system", "content": "You are a GameMaster AI."},
+                          {"role": "user", "content": action_prompt}],
+                max_tokens=150,
+                temperature=0.7,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error generating creative action response: {str(e)}")
+            return "The outcome of this action is unclear. Try again!"
 
 # Example Usage
 #if __name__ == "__main__":
