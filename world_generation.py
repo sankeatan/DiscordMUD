@@ -38,6 +38,22 @@ class WorldGenerator:
         self.TOP_LEVEL_BIOMES = TOP_LEVEL_BIOMES
         self.BIOME_ADJACENCY = BIOME_ADJACENCY
     
+    def generate_town(self):
+        """Generate the starting town in the corner of the map."""
+        town_biome = random.choice(list(TOP_LEVEL_BIOMES.keys()))
+        town = {
+            "name": "Starting Town",
+            "biome": town_biome,
+            "description": f"A {town_biome} village bustling with activity.",
+        }
+        self.town_location = (0, 0)  # Bottom-left corner
+        self.regions[0][0] = {
+            "biome": town_biome,
+            "town": town,
+            "sub_regions": self.generate_sub_regions(town_biome, 0, 0),
+        }
+        logger.info(f"Town generated in {town_biome} biome at (0, 0).")
+        return town
     
     def generate_regions(self):
         """Generates top-level regions with primary biomes based on Perlin noise."""
@@ -49,7 +65,8 @@ class WorldGenerator:
                 biome = self.select_biome_based_on_elevation(elevation)
                 self.regions[y][x] = {
                     'biome': biome,
-                    'sub_regions': self.generate_sub_regions(biome, x, y)
+                    'sub_regions': self.generate_sub_regions(biome, x, y),
+                    'description': f"You see a vast {biome} stretching out before you."
                 }
         logger.debug(f"Generated {len(self.regions)} x {len(self.regions[0])} regions")
         return self.regions

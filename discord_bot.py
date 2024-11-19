@@ -49,6 +49,23 @@ combat_manager = CombatManager()
 
 player_characters = {}
 
+@bot.command(name="questboard")
+async def quest_board(ctx):
+    """View the quest board in town."""
+    player_discord_id = str(ctx.author.id)
+    char_data = load_character(player_discord_id)
+    if not char_data:
+        await ctx.send("You don't have a character yet! Use `!create` to start.")
+        return
+
+    location = char_data["location"]
+    if location != (0, 0):
+        await ctx.send("You must be in the Town to view the quest board.")
+        return
+
+    quests = ai_gm.generate_quest_board((0, 0), world_gen)
+    await ctx.send(f"**Quest Board:**\n" + "\n".join(f"- {quest}" for quest in quests))
+
 @bot.command(name="create")
 async def create_character(ctx, *, character_name: str):
     """Create a character and save it to the database."""
@@ -59,7 +76,8 @@ async def create_character(ctx, *, character_name: str):
         return
 
     # Create and save the character
-    character = Character(name=character_name)
+    starting_location = (0,0)
+    character = Character(name=character_name, starting_location=starting_location)
     save_character(player_discord_id, character)
     player_characters[player_discord_id] = character
     logger.info(f"Player {ctx.author.name} created a character named '{character_name}'.")
@@ -102,10 +120,11 @@ async def view_character(ctx):
         await ctx.send("You don't have a character yet! Use `!create` to start.")
         return
     
+    location = char_data["location"]
     logger.info(f"Player {ctx.author.name} viewed their character '{char_data['name']}'.")
     stats = "\n".join([f"{stat}: {value}" for stat, value in char_data["stats"].items()])
     await ctx.send(
-        f"**{char_data['name']}'s Stats:**\nClass: {char_data['class']}\nLevel: {char_data['level']}\n{stats}"
+        f"**{char_data['name']}'s Stats:**\nClass: {char_data['class']}\nLevel: {char_data['level']}\n{stats}\nLocation: {location}\n{stats}"
     )
 
 @bot.command(name="combat")
@@ -200,54 +219,71 @@ async def start_game(ctx):
 # Command to Explore the World
 @bot.command(name="explore")
 async def explore(ctx):
-    """Explore the current region and receive quests."""
-    player = ctx.author.name
-    try:
-        biome = world_gen.get_random_biome()
-        quest = ai_gm.generate_quest(player, biome)
-        await ctx.send(f"You find yourself in a {biome}. {quest}")
-        logger.info(f"{player} explored the {biome}")
-    except Exception as e:
-        await ctx.send("An error occurred while exploring. Please try again.")
-        logger.error(f"Explore command failed: {str(e)}")
+    """Explore the current location."""
+    player_discord_id = str(ctx.author.id)
+    char_data = load_character(player_discord_id)
+    if not char_data:
+        await ctx.send("You don't have a character yet! Use `!create` to start.")
+        return
+    
+    location = char_data["location"]
+    if location == (0, 0):  # Town location
+        town = world_gen.regions[0][0]["town"]
+        await ctx.send(f"You are in {town['name']}. {town['description']}.")
+    else:
+        region = world_gen.get_region(*location)
+        biome = region["biome"]
+        encounter = ai_gm.generate_encounter(biome)
+        await ctx.send(f"You are in the {biome}. {encounter}")
 
 # Command to Move Player in a Direction
 @bot.command(name="move")
 async def move(ctx, direction: str):
-    """Move the player in a specific direction."""
+    """Move the character in a specific direction."""
+    player_discord_id = str(ctx.author.id)
+    char_data = load_character(player_discord_id)
+    if not char_data:
+        await ctx.send("You don't have a character yet! Use `!create` to start.")
+        return
     valid_directions = ["north", "south", "east", "west"]
     if direction.lower() not in valid_directions:
         await ctx.send(f"Invalid direction! Choose from: {', '.join(valid_directions)}")
         logger.warning(f"{ctx.author.name} attempted an invalid move: {direction}")
         return
-
-    player = ctx.author.name
     
-    # Get or initialize player position and stats
-    if player not in player_data:
-        player_data[player] = DEFAULT_PLAYER_STATS.copy()
-    
-    # Update player position based on direction
+     # Calculate new location
+    location = char_data["location"]
     if direction == "north":
-        player_data[player]["y"] -= 1
+        location[1] -= 1
     elif direction == "south":
-        player_data[player]["y"] += 1
+        location[1] += 1
     elif direction == "east":
-        player_data[player]["x"] += 1
+        location[0] += 1
     elif direction == "west":
-        player_data[player]["x"] -= 1
+        location[0] -= 1
 
-    # Get the new region based on updated position
-    new_x, new_y = player_data[player]["x"], player_data[player]["y"]
+    # Wrap around the map if necessary
     try:
-        new_region = world_gen.get_region(new_x, new_y)
-        biome = new_region['biome']
-        quest = ai_gm.react_to_player_action("move", player, biome)
-        await ctx.send(f"You move {direction} and find yourself in a {biome}. {quest}")
-        logger.info(f"{player} moved {direction} to ({new_x}, {new_y})")
-    except Exception as e:
-        await ctx.send("An error occurred while moving. Please try again.")
-        logger.error(f"Move command failed: {str(e)}")
+        region = world_gen.get_region(location[0], location[1])
+    except ValueError:
+        await ctx.send("You can't move further in that direction.")
+        return
+
+    # Update location and save
+    char_data["location"] = location
+    updated_character = Character(
+        name=char_data["name"],
+        player_class=char_data["class"],
+        starting_location=location
+    )
+    updated_character.stats = char_data["stats"]
+    updated_character.level = char_data["level"]
+    updated_character.inventory = char_data["inventory"]
+    save_character(player_discord_id, updated_character)
+
+    # Narrate the new location
+    biome = region["biome"]
+    await ctx.send(f"You move {direction} and arrive in a {biome}. {region.get('description', '')}")
 
 # Command to Check Player Stats
 @bot.command(name="stats")

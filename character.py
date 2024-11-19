@@ -6,13 +6,14 @@ class Character:
         "Magic": 10,
     }
 
-    def __init__(self, name, player_class="Adventurer"):
+    def __init__(self, name, player_class="Adventurer", starting_location=(0,0)):
         self.name = name
         self.player_class = player_class
         self.stats = self.BASE_STATS.copy()
         self.level = 1
         self.xp = 0
         self.inventory = []
+        self.location = starting_location
     
     def __str__(self):
         return self.name

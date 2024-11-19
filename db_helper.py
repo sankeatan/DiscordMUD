@@ -1,4 +1,5 @@
 import sqlite3
+import json
 
 DB_PATH = "game_data.db"
 
@@ -16,7 +17,8 @@ def initialize_database():
             attack INTEGER,
             defense INTEGER,
             magic INTEGER,
-            inventory TEXT
+            inventory TEXT,
+            location TEXT
         )
     ''')
     conn.commit()
@@ -28,8 +30,8 @@ def save_character(discord_id, character):
     cursor = conn.cursor()
     cursor.execute('''
         INSERT OR REPLACE INTO characters (
-            discord_id, name, class, level, hp, attack, defense, magic, inventory
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            discord_id, name, class, level, hp, attack, defense, magic, inventory, location
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         discord_id,
         character.name,
@@ -39,7 +41,8 @@ def save_character(discord_id, character):
         character.stats["Attack"],
         character.stats["Defense"],
         character.stats["Magic"],
-        ",".join(character.inventory)  # Convert list to string for storage
+        ",".join(character.inventory),
+        json.dumps(character.location)# Convert list to string for storage
     ))
     conn.commit()
     conn.close()
@@ -63,6 +66,7 @@ def load_character(discord_id):
                 "Defense": row[6],
                 "Magic": row[7]
             },
-            "inventory": row[8].split(",") if row[8] else []
+            "inventory": row[8].split(",") if row[8] else [],
+            "location": json.loads(row[9]) if row[9] else (0, 0),
         }
     return None

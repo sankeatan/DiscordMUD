@@ -1,6 +1,7 @@
 from logger import setup_logger
 import random
 from ai_npc import AINPC
+from world_generation import WorldGenerator
 
 logger = setup_logger('ai_game_master')
 
@@ -124,3 +125,27 @@ class AIGameMaster:
             # Check if the player triggers a new quest
             #return self.generate_quest(player, biome)
             return "Find the quest!"
+
+    def generate_encounter(self, biome):
+        """Generate an encounter based on the biome."""
+        if biome == "forest":
+            return "You hear rustling in the bushes. A pack of wolves appears!"
+        elif biome == "desert":
+            return "A sandstorm brews, obscuring your vision. Out of the haze, bandits approach!"
+        # Add more biome-specific encounters...
+        else:
+            return f"You encounter a unique challenge in the {biome}."
+        
+    def generate_quest_board(self, town_location, world_gen):
+        """Generate quests for the town based on surrounding regions."""
+        quests = []
+        x, y = town_location
+        surrounding_regions = [
+            world_gen.get_region(x+dx, y+dy)
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]
+            if world_gen.get_region(x+dx, y+dy)
+        ]
+        for region in surrounding_regions:
+            biome = region["biome"]
+            quests.append(f"Explore the {biome} and report back.")
+        return quests
