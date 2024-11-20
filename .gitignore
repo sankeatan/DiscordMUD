@@ -6,7 +6,11 @@ __pycache__/
 # Virtual Environment
 venv/
 env/
-.env
+*.env
+
+# Configuration files
+config.yaml
+config.yml
 
 # IDE-specific files
 .vscode/
