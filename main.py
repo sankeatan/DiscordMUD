@@ -22,6 +22,7 @@ def setup_bot(config: Config):
 
     # Initialize database and repositories
     db_manager = DatabaseManager(config.database_path)
+    db_manager.initialize_database()
     character_repository = CharacterRepository(db_manager)
     quest_repository = QuestRepository(db_manager)
     
@@ -40,8 +41,7 @@ def setup_bot(config: Config):
         bot,
         character_service,
         combat_service,
-        world_service,
-        quest_service
+        world_service
     )
     command_handler.register_commands()
 

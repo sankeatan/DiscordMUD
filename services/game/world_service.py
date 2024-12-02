@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple, Optional
-from ...data.models.world import Region, Location
-from ...data.database.repositories.world_repository import WorldRepository
+from data.models.world import Region, Location
+from data.database.repositories.world_repository import WorldRepository
 from ..ai.narrative_service import NarrativeService
 import logging
 
@@ -30,6 +30,7 @@ class WorldService:
             self.region_size, 
             seed
         )
+        logger.info("World generated successfully.")
 
     async def get_location_description(self, location: Tuple[int, int]) -> str:
         """Get or generate a description for a location."""
@@ -38,10 +39,12 @@ class WorldService:
             raise ValueError("Invalid location")
 
         features = self.get_location_features(location)
-        return await self.narrative_service.generate_location_description(
+        description = await self.narrative_service.generate_location_description(
             region.biome,
             features
         )
+        logger.info(f"Location description retrieved for {location}: {description}")
+        return description
 
     def get_region_at_location(self, location: Tuple[int, int]) -> Optional[Region]:
         """Get the region data for a specific location."""
@@ -53,8 +56,8 @@ class WorldService:
         region_y = y // self.region_size
         
         try:
-            return self.current_world[region_y][region_x]
-        except IndexError:
+            return self.current_world[(region_x, region_y)]
+        except KeyError:
             return None
 
     def get_location_features(self, location: Tuple[int, int]) -> List[str]:
@@ -72,9 +75,9 @@ class WorldService:
             features.append("mysterious structure")
         return features
 
-    def move_character(self, 
-                      current_location: Tuple[int, int], 
-                      direction: str) -> Tuple[Tuple[int, int], str]:
+    async def move_character(self, 
+                             current_location: Tuple[int, int], 
+                             direction: str) -> Tuple[Tuple[int, int], str]:
         """Move character in a direction and get new location description."""
         x, y = current_location
         
@@ -88,8 +91,13 @@ class WorldService:
             x -= 1
         else:
             raise ValueError("Invalid direction")
-        # Check boundaries
+        
         if not (0 <= x < self.width and 0 <= y < self.height):
             raise ValueError("Cannot move beyond world boundaries")
+        
         new_location = (x, y)
-        return new_location
+        
+        description = await self.get_location_description(new_location)
+        
+        logger.info(f"Character moved from {current_location} to {new_location} in direction {direction}")
+        return new_location, description

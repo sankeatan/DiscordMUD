@@ -1,7 +1,7 @@
 from typing import Optional
 import logging
-from ...data.models.character import Character
-from ...data.database.repositories.character_repository import CharacterRepository
+from data.models.character import Character
+from data.database.repositories.character_repository import CharacterRepository
 
 logger = logging.getLogger("character_service")
 

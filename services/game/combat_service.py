@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional, Tuple
-from ...data.models.combat import CombatState, CombatAction, Enemy
-from ...data.models.character import Character
-from ..ai.narrative_service import NarrativeService
+from data.models.combat import CombatState, CombatAction, Enemy
+from data.models.character import Character
+from services.ai.narrative_service import NarrativeService
 import random
 import logging
 
@@ -82,6 +82,7 @@ class CombatService:
         )
         
         self.current_combat.actions.append(action)
+        logger.info(f"Action added: {action_type} by {player.name} targeting {target}")
 
     async def resolve_round(self) -> str:
         """Resolve the current combat round and generate narrative."""
@@ -112,6 +113,7 @@ class CombatService:
         if self.current_combat.is_combat_over():
             self.current_combat.is_active = False
             narrative += "\nCombat has ended!"
+            logger.info("Combat session ended.")
 
         return narrative
 

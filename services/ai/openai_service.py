@@ -1,9 +1,9 @@
 from typing import Dict, Optional
 import openai
 import logging
-from ...core.config import Config
+from core.config import Config
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("openai_service")
 
 class OpenAIService:
     """Base service for OpenAI API interactions."""
@@ -24,12 +24,13 @@ class OpenAIService:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
-            response = await openai.ChatCompletion.acreate(
+            response = openai.beta.chat.completions.parse(
                 model="gpt-3.5-turbo",
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens
             )
+            logger.debug(f"OpenAI response: {response}")
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"Error generating OpenAI response: {e}")

@@ -1,6 +1,7 @@
 from typing import Optional
 from discord.ext import commands
-from ...core.exceptions import GameError
+from core.exceptions import GameError
+from data.models.character import Character
 import logging
 
 logger = logging.getLogger("base_handler")
@@ -19,9 +20,9 @@ class BaseCommandHandler:
             logger.error(f"Error in command {ctx.command}: {error}", exc_info=True)
             await ctx.send("An unexpected error occurred. Please try again later.")
 
-    async def check_character_exists(self, ctx: commands.Context) -> Optional[dict]:
+    async def check_character_exists(self, ctx: commands.Context) -> Optional[Character]:
         """Common check for character existence."""
-        character = await self.character_service.get_character(str(ctx.author.id))
+        character = self.character_service.get_character(str(ctx.author.id))
         if not character:
             await ctx.send("You don't have a character yet! Use `!create` to start.")
             return None

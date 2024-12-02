@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional
-from ...data.models.quest import Quest
-from ...data.database.repositories.quest_repository import QuestRepository
+from data.models.quest import Quest
+from data.database.repositories.quest_repository import QuestRepository
 from ..ai.narrative_service import NarrativeService
 import logging
 

@@ -1,6 +1,6 @@
 from discord.ext import commands
 from .base_handler import BaseCommandHandler
-from ...services.game.character_service import CharacterService
+from services.game.character_service import CharacterService
 import logging
 
 logger = logging.getLogger("character_commands")

@@ -12,11 +12,11 @@ class GameCommandHandler:
     def __init__(self, bot: commands.Bot, 
                  character_service, 
                  combat_service,
-                 world_service):
+                 world_service,):
         self.bot = bot
         self.character_commands = CharacterCommands(bot, character_service)
-        self.combat_commands = CombatCommands(bot, combat_service)
-        self.exploration_commands = ExplorationCommands(bot, world_service)
+        self.combat_commands = CombatCommands(bot, combat_service, character_service)
+        self.exploration_commands = ExplorationCommands(bot, world_service, character_service)
 
     def register_commands(self):
         """Register all commands with the bot."""
